@@ -1,77 +1,81 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Hololens 3D Modell</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Three.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas {
-            display: block;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>3D Modell Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js"></script>
+<style>
+    body { margin:0; overflow:hidden; }
+    canvas { display:block; }
+</style>
 </head>
 <body>
 <script>
-    let scene, camera, renderer, model;
+let scene, camera, renderer, model, controls;
 
-    init();
-    animate();
+init();
+animate();
 
-    function init() {
-        // Szene
-        scene = new THREE.Scene();
+function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+    camera.position.set(0, 1.6, 3); // Für Desktop-View
 
-        // Kamera
-        camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+    light.position.set(0.5, 1, 0.25);
+    scene.add(light);
 
-        // Licht
-        const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-        light.position.set(0.5, 1, 0.25);
-        scene.add(light);
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
 
-        // Renderer
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.xr.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // AR Button
+    // WebXR AR-Button nur, wenn WebXR verfügbar ist
+    if (navigator.xr) {
         document.body.appendChild(ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }));
-
-        // GLTF Loader
-        const loader = new THREE.GLTFLoader();
-        loader.load('model.glb', function(gltf) {
-            model = gltf.scene;
-            model.scale.set(0.2, 0.2, 0.2); // Größe anpassen
-            model.position.set(0, 0, -1);   // 1 Meter vor der Kamera
-            scene.add(model);
-        }, undefined, function(error) {
-            console.error(error);
-        });
-
-        // Resize
-        window.addEventListener('resize', function() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+    } else {
+        console.log("WebXR nicht verfügbar - normale 3D Ansicht aktiv");
     }
 
-    function animate() {
-        renderer.setAnimationLoop(render);
-    }
+    // GLTF Loader
+    const loader = new THREE.GLTFLoader();
+    loader.load('model.glb', function(gltf){
+        model = gltf.scene;
+        model.scale.set(0.2,0.2,0.2);
+        model.position.set(0,0,0);
+        scene.add(model);
+    }, undefined, function(err){ console.error(err); });
 
-    function render() {
-        renderer.render(scene, camera);
-    }
+    // Orbit Controls für Desktop (optional)
+    // Damit du das Modell per Maus drehen kannst
+    // Lädt von CDN:
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/controls/OrbitControls.js";
+    script.onload = () => {
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(0,0,0);
+        controls.update();
+    };
+    document.head.appendChild(script);
+
+    window.addEventListener('resize', ()=>{
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+}
+
+function animate(){
+    renderer.setAnimationLoop(render);
+}
+
+function render(){
+    if(controls) controls.update();
+    renderer.render(scene,camera);
+}
 </script>
 </body>
 </html>
